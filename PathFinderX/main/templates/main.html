@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bellman-Ford Grid Solver</title>
+  <title>PathFinderX</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
       transition: background-color 0.3s ease;
     }
     .grid-button:hover {
-      background-color: #E6E6E6;
+      background-color: #CCCCCC;
     }
     .raleway {
       font-family: "Raleway", sans-serif;
@@ -39,8 +39,10 @@
       font-style: normal;
     }
     .start { background-color: green; }
+    .start:hover {background-color: green;}
     .end { background-color: red; }
-    .selected { background-color: lightgray; }
+    .end:hover { background-color: red; }
+    .selected { background-color: black; }
     .path { background-color: blue; }
   </style>
 </head>
@@ -57,7 +59,11 @@
     </div>
     
     <div class="p-4 w-1/3">
-      <button class="bg-[#EEEEEE] text-[#3B1E54] p-5 rounded-lg text-lg font-bold hover:bg-[#FFF] transition ease-in-out duration-300 w-full" onclick="generateGrid()">Enter</button>
+      <button class="bg-[#EEEEEE] text-[#3B1E54] p-5 rounded-lg text-lg font-bold hover:bg-[#FFF] transition ease-in-out duration-300 w-full" onclick="generateGrid()">Generate</button>
+    </div>
+
+    <div class="p-4 w-1/3">
+        <button class="bg-[#EEEEEE] text-[#3B1E54] p-5 rounded-lg text-lg font-bold hover:bg-[#FFF] transition ease-in-out duration-300 w-full" onclick="generateRandomSelection()">Generate Random Selection</button>
     </div>
   </div>
   
@@ -72,6 +78,7 @@
   <script>
     let gridSize = 0;
     let gridData = [];
+    
     function generateGrid() {
       gridSize = parseInt(document.getElementById('grid-size').value);
       if (isNaN(gridSize) || gridSize < 2) {
@@ -110,20 +117,77 @@
       }
     }
 
-        function submitGrid() {
-        const formattedGrid = gridData.map(row => `[${row.join(' ')}]`).join(',');
+    async function submitGrid() {
+        const formattedGrid = gridData.map(row => row.join(' ')).join(',');
+        const matrix = gridData; 
         console.log(`[${formattedGrid}]`);
+
+        const response = await fetch('/find-shortest-path/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ matrix: matrix }),
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            const distance = result.distance;
+            const path = result.path;
+
+            highlightShortestPath(path);
+
+            console.log('Shortest path distance:', distance);
+        } else {
+            console.error('Error fetching shortest path:', response.statusText);
         }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function generateRandomSelection() {
+      const totalButtons = gridSize * gridSize;
+      const randomSelectionCount = Math.floor(Math.random() * (Math.floor(totalButtons * 0.2) - Math.ceil(totalButtons * 0.15) + 1) + Math.ceil(totalButtons * 0.15));
+      
+      let selectedCount = 0;
+      while (selectedCount < randomSelectionCount) {
+        const randomRow = Math.floor(Math.random() * gridSize);
+        const randomCol = Math.floor(Math.random() * gridSize);
+        const button = document.querySelector(`[data-row="${randomRow}"][data-col="${randomCol}"]`);
+        
+        if (button && !button.classList.contains('start') && !button.classList.contains('end') && !button.classList.contains('selected')) {
+          button.classList.add('selected');
+          gridData[randomRow][randomCol] = 1;
+          selectedCount++;
+        }
+      }
+    }
 
     function highlightShortestPath(path) {
-      path.forEach(([row, col]) => {
-        const button = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        if (button) {
-          button.classList.remove('selected');
-          button.classList.add('path');
-        }
-      });
+        path.forEach(([row, col]) => {
+            const button = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (button) {
+                button.classList.remove('selected');
+                button.classList.add('path');
+                button.style.backgroundColor = 'blue';
+            }
+        });
     }
+
   </script>
 </body>
 </html>
