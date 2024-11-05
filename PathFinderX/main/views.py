@@ -61,6 +61,8 @@ def find_shortest_path(request):
         matrix = data.get('matrix')
         if not matrix:
             return JsonResponse({'error': 'No matrix provided'}, status=400)
-
         distance, path = shortest_path(matrix)
+        if distance == float('inf'):
+            return JsonResponse({'message': "It's not possible to find the shortest path."})
+        
         return JsonResponse({'distance': distance, 'path': path})
